@@ -122,10 +122,10 @@
         .hijri-display { font-size: 11px; color: var(--accent-gold); text-align: center; margin-top: -10px; margin-bottom: 14px; font-weight: 500; }
         .location-display { font-size: 10px; color: var(--text-sub); text-align: center; margin-top: -10px; margin-bottom: 12px; }
 
-        .nav-tabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px; }
+        .nav-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px; overflow-x: auto; }
         .tab-btn {
-            background: none; border: none; font-size: 12px; font-weight: 600; color: var(--text-sub);
-            padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+            background: none; border: none; font-size: 11px; font-weight: 600; color: var(--text-sub);
+            padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
         }
         .tab-btn.active { color: var(--accent-green); background-color: rgba(16, 185, 129, 0.1); }
 
@@ -154,6 +154,20 @@
             margin-bottom: 8px; cursor: pointer; color: var(--text-main); font-size: 14px; font-weight: 500; text-align: left; width: 100%;
         }
         .sunnah-item.completed { background-color: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+
+        /* Qada Tracker Styling */
+        .qada-card {
+            background-color: rgba(15, 23, 42, 0.5); border: 1px solid var(--card-border); border-radius: 16px;
+            padding: 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .qada-info h4 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+        .qada-info p { font-size: 12px; color: var(--accent-red); font-weight: 600; }
+        .qada-actions { display: flex; align-items: center; gap: 8px; }
+        .qada-btn {
+            background-color: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: var(--accent-green);
+            padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .qada-btn:hover { background-color: rgba(16, 185, 129, 0.3); }
 
         .reflection-box { width: 100%; height: 100px; background-color: rgba(15, 23, 42, 0.5); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; color: var(--text-main); font-size: 13px; outline: none; resize: none; margin-top: 8px; }
         .reflection-box:focus { border-color: var(--accent-green); }
@@ -236,8 +250,9 @@
         </div>
 
         <div class="nav-tabs" role="tablist">
-            <button class="tab-btn active" role="tab" aria-selected="true" onclick="switchTab('fardh', this)">Fardh Prayers</button>
-            <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('sunnah', this)">Sunnah & Extra</button>
+            <button class="tab-btn active" role="tab" aria-selected="true" onclick="switchTab('fardh', this)">Fardh</button>
+            <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('sunnah', this)">Sunnah</button>
+            <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('qada', this)">Qada Backlog</button>
             <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('notes', this)">Reflections</button>
         </div>
 
@@ -247,6 +262,14 @@
 
         <div id="tab-sunnah" class="hidden">
             <div id="sunnah-list"></div>
+        </div>
+
+        <!-- TAB: QADA BACKLOG COUNTER -->
+        <div id="tab-qada" class="hidden">
+            <div style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">
+                Track and clear makeup prayers accumulated from missed logs.
+            </div>
+            <div id="qada-list"></div>
         </div>
 
         <div id="tab-notes" class="hidden">
@@ -282,12 +305,12 @@
     let activeRequestToken = 0;
     let noteSaveTimeout = null;
     let apiPrayerTimes = {};
+    let qadaCounts = { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 };
 
-    // Dynamic user location settings with safe fallback (Default: Kuala Lumpur, Method 17)
     let userLocation = {
         lat: 3.1390,
         lng: 101.6869,
-        method: 3, // Auto method by AlAdhan or regional default
+        method: 3,
         city: "Kuala Lumpur",
         country: "Malaysia"
     };
@@ -317,23 +340,21 @@
         return `${hours}:${minutesStr} ${ampm}`;
     }
 
-    // Determine regional calculation method based on country
     function getCalculationMethod(countryCode) {
         switch (countryCode) {
-            case 'MY': return 17; // JAKIM Malaysia
-            case 'SG': return 11; // MUIS Singapore
-            case 'ID': return 15; // Kemenag Indonesia
-            case 'US': case 'CA': return 2; // ISNA North America
-            case 'GB': case 'FR': case 'DE': return 3; // MWL Europe
-            case 'EG': return 5; // Egyptian General Authority
-            case 'SA': return 4; // Umm Al-Qura University
-            case 'PK': case 'IN': case 'BD': return 1; // University of Islamic Sciences, Karachi
-            case 'AE': case 'QA': case 'KW': return 16; // Dubai / Gulf
-            default: return 3; // Muslim World League as standard global default
+            case 'MY': return 17;
+            case 'SG': return 11;
+            case 'ID': return 15;
+            case 'US': case 'CA': return 2;
+            case 'GB': case 'FR': case 'DE': return 3;
+            case 'EG': return 5;
+            case 'SA': return 4;
+            case 'PK': case 'IN': case 'BD': return 1;
+            case 'AE': case 'QA': case 'KW': return 16;
+            default: return 3;
         }
     }
 
-    // Auto-detect location via Browser Geolocation API -> IP Geolocation Fallback -> Default
     function initializeUserLocation(callback) {
         const locationElem = document.getElementById('location-display');
 
@@ -343,7 +364,6 @@
                     userLocation.lat = pos.coords.latitude;
                     userLocation.lng = pos.coords.longitude;
                     
-                    // Reverse geocode to show city/country name
                     fetch(`https://api.aladhan.com/v1/qibla/${userLocation.lat}/${userLocation.lng}`)
                         .then(() => {
                             locationElem.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Precise GPS Location`;
@@ -352,7 +372,6 @@
                         .finally(() => callback());
                 },
                 () => {
-                    // Geolocation denied/failed -> Fallback to IP Geolocation
                     fetchIPLocation(callback);
                 },
                 { timeout: 5000 }
@@ -422,10 +441,12 @@
                 loadDateData();
             });
             calculateStreak(user.uid);
+            loadQadaCounts(user.uid);
         } else {
             document.getElementById('auth-screen').classList.remove('hidden');
             document.getElementById('app-screen').classList.add('hidden');
             document.getElementById('streak-counter').innerHTML = `<i class="fa-solid fa-fire"></i> 0 Day Streak`;
+            qadaCounts = { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 };
         }
     });
 
@@ -496,9 +517,11 @@
 
         document.getElementById('tab-fardh').classList.add('hidden');
         document.getElementById('tab-sunnah').classList.add('hidden');
+        document.getElementById('tab-qada').classList.add('hidden');
         document.getElementById('tab-notes').classList.add('hidden');
 
         document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        if (tabName === 'qada') renderQadaList();
     }
 
     function handleReflectionInput() {
@@ -584,6 +607,7 @@
             .then(() => {
                 showToast("Updated!");
                 calculateStreak(user.uid);
+                loadQadaCounts(user.uid);
             })
             .catch(err => {
                 localDayData[prayerId] = prevStatus;
@@ -672,6 +696,76 @@
             `;
             container.appendChild(btn);
         });
+    }
+
+    function loadQadaCounts(uid) {
+        db.collection('users').doc(uid).collection('history')
+            .limit(400)
+            .get()
+            .then(snapshot => {
+                let counts = { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 };
+                snapshot.forEach(doc => {
+                    let d = doc.data();
+                    prayers.forEach(p => {
+                        if (d[p.id] === 'missed') {
+                            counts[p.id]++;
+                        }
+                    });
+                });
+                qadaCounts = counts;
+                renderQadaList();
+            }).catch(() => {});
+    }
+
+    function renderQadaList() {
+        const container = document.getElementById('qada-list');
+        container.innerHTML = '';
+
+        prayers.forEach(p => {
+            const count = qadaCounts[p.id] || 0;
+            const card = document.createElement('div');
+            card.className = 'qada-card';
+            card.innerHTML = `
+                <div class="qada-info">
+                    <h4>${p.icon} ${p.name}</h4>
+                    <p>${count} Missed Prayers Recorded</p>
+                </div>
+                <div class="qada-actions">
+                    <button type="button" class="qada-btn" onclick="decrementQada('${p.id}')"><i class="fa-solid fa-check"></i> Made Up</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function decrementQada(prayerId) {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Find the most recent history document where this prayer was marked as 'missed' and clear it
+        db.collection('users').doc(user.uid).collection('history')
+            .orderBy(firebase.firestore.FieldPath.documentId(), 'desc')
+            .get()
+            .then(snapshot => {
+                let targetDocId = null;
+                snapshot.forEach(doc => {
+                    if (!targetDocId && doc.data()[prayerId] === 'missed') {
+                        targetDocId = doc.id;
+                    }
+                });
+
+                if (targetDocId) {
+                    db.collection('users').doc(user.uid).collection('history').doc(targetDocId)
+                        .set({ [prayerId]: 'none' }, { merge: true })
+                        .then(() => {
+                            showToast("Qada cleared!");
+                            loadQadaCounts(user.uid);
+                        });
+                } else {
+                    showToast("No active missed record found to clear.");
+                }
+            })
+            .catch(() => showToast("Could not update Qada count."));
     }
 
     function updateProgress() {
