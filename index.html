@@ -118,14 +118,14 @@
 </div>
 
 <script>
-    // Complete Firebase app credentials[cite: 8]
+    // Exact Firebase credentials from your console
     const firebaseConfig = {
-        apiKey: "AIzaSyCf3fUwyksRPnVygjrLpTxdnZxDYA_4Mo",
+        apiKey: "AIzaSyCf3fUwyksRPnVyqjrLJpTxdnZxDYA_4Mo",
         authDomain: "prayer-tracker-d9d1f.firebaseapp.com",
         projectId: "prayer-tracker-d9d1f",
         storageBucket: "prayer-tracker-d9d1f.firebasestorage.app",
         messagingSenderId: "904988992102",
-        appId: "1:904988992102:web:7873d573ef7e9520383a77",
+        appId: "1:904988992102:web:7873d573ef75e9520383a7",
         measurementId: "G-P7VLZ78NC1"
     };
 
@@ -151,7 +151,6 @@
             document.getElementById('app-screen').classList.remove('hidden');
             document.getElementById('display-user').innerText = user.email || user.displayName;
             
-            // Set current local date value automatically in YYYY-MM-DD
             const today = new Date().toLocaleDateString('sv');
             document.getElementById('tracker-date').value = today;
             currentSelectedDate = today;
