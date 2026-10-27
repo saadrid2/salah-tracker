@@ -261,7 +261,7 @@
             <button class="date-btn" onclick="changeDate(-1)" aria-label="Previous Day"><i class="fa-solid fa-chevron-left"></i></button>
             <button type="button" class="date-display-btn" onclick="toggleCalendarDropdown()">
                 <i class="fa-regular fa-calendar" style="color:var(--accent-green)"></i>
-                <span id="current-date-label">27/10/2026</span>
+                <span id="current-date-label">Loading...</span>
             </button>
             <button class="date-btn" onclick="changeDate(1)" aria-label="Next Day"><i class="fa-solid fa-chevron-right"></i></button>
 
@@ -348,9 +348,9 @@
     let noteSaveTimeout = null;
     let apiPrayerTimes = {};
     let qadaCounts = { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 };
-    let allHistoryCache = {}; // Cache history data for calendar dots
+    let allHistoryCache = {};
 
-    let calendarViewDate = new Date(); // Tracks month/year currently shown in dropdown calendar
+    let calendarViewDate = new Date();
 
     let userLocation = {
         lat: 3.1390,
@@ -448,7 +448,6 @@
             .finally(() => callback());
     }
 
-    // Close calendar dropdown when clicking outside
     window.addEventListener('click', (e) => {
         const bar = document.querySelector('.date-bar');
         const dropdown = document.getElementById('calendar-dropdown');
@@ -480,14 +479,13 @@
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         document.getElementById('cal-month-year-label').innerText = `${monthNames[month]} ${year}`;
 
-        const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; // Monday start
+        const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
         const totalDays = new Date(year, month + 1, 0).getDate();
         const prevTotalDays = new Date(year, month, 0).getDate();
 
         const now = new Date();
         const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-        // Previous month trailing days
         for (let i = firstDayIndex - 1; i >= 0; i--) {
             const dayNum = prevTotalDays - i;
             const div = document.createElement('div');
@@ -496,7 +494,6 @@
             container.appendChild(div);
         }
 
-        // Current month days
         for (let d = 1; d <= totalDays; d++) {
             const mStr = String(month + 1).padStart(2, '0');
             const dStr = String(d).padStart(2, '0');
@@ -509,16 +506,13 @@
 
             div.innerText = d;
 
-            // Check completion status from history cache
             if (allHistoryCache[dateKey]) {
                 let completedCount = 0;
-                let hasMissed = false;
                 let data = allHistoryCache[dateKey];
 
                 prayers.forEach(p => {
                     let val = data[p.id];
                     if (val === true || val === 'jamaah' || val === 'individual' || val === 'late') completedCount++;
-                    if (val === 'missed') hasMissed = true;
                 });
 
                 const dot = document.createElement('div');
@@ -534,7 +528,6 @@
                 if (dateKey <= todayStr) {
                     currentSelectedDate = dateKey;
                     const parts = dateKey.split('-');
-                    document.getElementById('tracker-date-val'] = dateKey;
                     document.getElementById('current-date-label').innerText = `${parts[2]}/${parts[1]}/${parts[0]}`;
                     document.getElementById('calendar-dropdown').classList.add('hidden');
                     loadDateData();
