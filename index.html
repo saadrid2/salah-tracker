@@ -1,645 +1,441 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salah Tracker - Spiritual Dashboard</title>
-    <!-- Font Awesome & Google Fonts -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Firebase SDKs (v10 Compatibility Mode) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-    <style>
-        :root {
-            --bg-dark: #0f172a;
-            --card-bg: #1e293b;
-            --card-border: #334155;
-            --accent-green: #10b981;
-            --accent-green-glow: rgba(16, 185, 129, 0.25);
-            --accent-gold: #fbbf24;
-            --accent-blue: #3b82f6;
-            --accent-red: #ef4444;
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
-
-        body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px 12px;
-            background-image: 
-                radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
-                radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.08) 0%, transparent 45%);
-        }
-
-        .container {
-            width: 100%;
-            max-width: 520px;
-            background-color: rgba(30, 41, 59, 0.85);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 28px 24px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hidden { display: none !important; }
-
-        /* Initial Loader */
-        .loading-screen {
-            text-align: center;
-            padding: 40px 0;
-            color: var(--accent-green);
-        }
-        .spinner {
-            font-size: 32px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        /* Auth Screen */
-        .auth-header { text-align: center; margin-bottom: 24px; }
-        .auth-icon { font-size: 40px; color: var(--accent-green); margin-bottom: 12px; display: inline-block; }
-        .auth-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
-        .auth-header p { color: var(--text-sub); font-size: 14px; }
-
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--text-sub); margin-bottom: 6px; }
-        .form-control {
-            width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--card-border);
-            background-color: rgba(15, 23, 42, 0.6); color: var(--text-main); font-size: 15px; outline: none; transition: all 0.2s;
-        }
-        .form-control:focus { border-color: var(--accent-green); box-shadow: 0 0 0 3px var(--accent-green-glow); }
-
-        .btn {
-            width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600;
-            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px;
-        }
-        .btn-primary { background-color: var(--accent-green); color: #0f172a; }
-        .btn-primary:hover { opacity: 0.95; transform: translateY(-1px); }
-        .btn-google { background-color: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); color: var(--text-main); margin-top: 14px; }
-        .btn-google:hover { background-color: rgba(255, 255, 255, 0.1); }
-
-        .divider { text-align: center; margin: 18px 0; position: relative; }
-        .divider::before { content: ""; position: absolute; left: 0; top: 50%; width: 100%; height: 1px; background-color: var(--card-border); }
-        .divider span { position: relative; background-color: var(--card-bg); padding: 0 12px; color: var(--text-sub); font-size: 12px; }
-
-        .auth-links { display: flex; justify-content: space-between; margin-top: 16px; font-size: 13px; color: var(--text-sub); }
-        .auth-links span { color: var(--accent-green); font-weight: 600; cursor: pointer; }
-
-        /* Header Bar */
-        .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--card-border); }
-        .user-info { display: flex; align-items: center; gap: 10px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-green), var(--accent-blue)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #fff; }
-        .user-details h4 { font-size: 14px; font-weight: 600; }
-        .user-details p { font-size: 11px; color: var(--text-sub); }
-        .logout-btn { background: none; border: none; color: var(--accent-red); font-size: 16px; cursor: pointer; padding: 6px 10px; border-radius: 8px; }
-        .logout-btn:hover { background-color: rgba(239, 68, 68, 0.1); }
-
-        /* Progress Card & Streak Badge */
-        .progress-card {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.05));
-            border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 18px; padding: 18px;
-            display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
-        }
-        .progress-info h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-        .streak-badge { background-color: rgba(251, 191, 36, 0.15); color: var(--accent-gold); border: 1px solid rgba(251, 191, 36, 0.3); padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-        .progress-info p { font-size: 12px; color: var(--text-sub); }
-
-        .circular-progress {
-            position: relative; width: 60px; height: 60px; border-radius: 50%;
-            background: conic-gradient(var(--accent-green) 0deg, var(--card-border) 0deg);
-            display: flex; align-items: center; justify-content: center; transition: background 0.3s ease;
-        }
-        .circular-progress::before { content: ""; position: absolute; width: 46px; height: 46px; border-radius: 50%; background-color: var(--card-bg); }
-        .progress-value { position: relative; font-size: 12px; font-weight: 700; color: var(--text-main); }
-
-        /* Date Selector */
-        .date-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; background-color: rgba(15, 23, 42, 0.4); padding: 8px 12px; border-radius: 14px; border: 1px solid var(--card-border); }
-        .date-btn { background: none; border: none; color: var(--text-sub); font-size: 14px; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
-        .date-btn:hover { color: var(--text-main); background-color: rgba(255,255,255,0.05); }
-        .date-input { background: none; border: none; color: var(--text-main); font-weight: 600; font-size: 13px; text-align: center; outline: none; cursor: pointer; }
-        .hijri-display { font-size: 11px; color: var(--accent-gold); text-align: center; margin-top: -10px; margin-bottom: 14px; font-weight: 500; }
-
-        /* Accessible Nav Tabs */
-        .nav-tabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px; }
-        .tab-btn {
-            background: none; border: none; font-size: 12px; font-weight: 600; color: var(--text-sub);
-            padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s;
-        }
-        .tab-btn.active { color: var(--accent-green); background-color: rgba(16, 185, 129, 0.1); }
-
-        /* Prayer Card & Accessible Status Buttons */
-        .prayer-card { background-color: rgba(15, 23, 42, 0.5); border: 1px solid var(--card-border); border-radius: 16px; padding: 14px 16px; margin-bottom: 10px; }
-        .prayer-main { display: flex; align-items: center; justify-content: space-between; }
-        .prayer-header { display: flex; align-items: center; gap: 12px; }
-        .prayer-icon { font-size: 18px; width: 36px; height: 36px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: center; }
-        .prayer-title { font-size: 15px; font-weight: 600; }
-        .prayer-time-sub { font-size: 11px; color: var(--accent-gold); margin-top: 1px; }
-
-        .status-group { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.08); }
-        .status-btn {
-            flex: 1; padding: 8px 4px; font-size: 11px; font-weight: 600; border-radius: 8px;
-            border: 1px solid var(--card-border); background-color: rgba(255, 255, 255, 0.02);
-            color: var(--text-sub); cursor: pointer; text-align: center; transition: all 0.2s;
-        }
-        .status-btn:focus-visible { outline: 2px solid var(--accent-green); }
-        .status-btn.active-jamaah { background-color: rgba(16, 185, 129, 0.2); border-color: var(--accent-green); color: var(--accent-green); }
-        .status-btn.active-individual { background-color: rgba(59, 130, 246, 0.2); border-color: var(--accent-blue); color: var(--accent-blue); }
-        .status-btn.active-late { background-color: rgba(251, 191, 36, 0.2); border-color: var(--accent-gold); color: var(--accent-gold); }
-        .status-btn.active-missed { background-color: rgba(239, 68, 68, 0.2); border-color: var(--accent-red); color: var(--accent-red); }
-
-        /* Sunnah Checklist */
-        .sunnah-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background-color: rgba(15, 23, 42, 0.4); border: 1px solid var(--card-border); border-radius: 12px; margin-bottom: 8px; cursor: pointer; }
-        .sunnah-item.completed { background-color: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
-
-        .reflection-box { width: 100%; height: 100px; background-color: rgba(15, 23, 42, 0.5); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; color: var(--text-main); font-size: 13px; outline: none; resize: none; margin-top: 8px; }
-        .reflection-box:focus { border-color: var(--accent-green); }
-
-        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background-color: var(--accent-green); color: #0f172a; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 30px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1000; }
-        .toast.show { transform: translateX(-50%) translateY(0); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Salah Tracker</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--line:#334155;--green:#10b981;--glow:rgba(16,185,129,.25);--gold:#fbbf24;--blue:#3b82f6;--red:#ef4444;--text:#f8fafc;--sub:#94a3b8}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',sans-serif}
+body{background:var(--bg) radial-gradient(circle at 15% 15%,rgba(16,185,129,.08),transparent 45%),radial-gradient(circle at 85% 85%,rgba(59,130,246,.08),transparent 45%);color:var(--text);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px 12px}
+.container{width:100%;max-width:520px;background:rgba(30,41,59,.85);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:24px;padding:28px 24px;box-shadow:0 20px 40px rgba(0,0,0,.4);overflow:hidden}
+.hidden{display:none!important}
+button,input,textarea{color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.loading{text-align:center;padding:40px 0;color:var(--green)}
+.loading i{font-size:32px;animation:spin 1s linear infinite}
+.loading p{margin-top:12px;font-size:13px;color:var(--sub)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.auth-header{text-align:center;margin-bottom:24px}
+.auth-icon{font-size:40px;color:var(--green);margin-bottom:12px}
+.auth-header h1{font-size:24px;margin-bottom:6px}
+.auth-header p{color:var(--sub);font-size:14px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:500;color:var(--sub);margin-bottom:6px}
+.form-control{width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:rgba(15,23,42,.6);font-size:15px}
+.form-control:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--glow);outline:none}
+.btn{width:100%;padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px}
+.btn-primary{background:var(--green);color:#0f172a}
+.btn-google{background:rgba(255,255,255,.05);border:1px solid var(--line);margin-top:14px}
+.divider{text-align:center;margin:18px 0;position:relative;font-size:12px;color:var(--sub)}
+.divider::before{content:"";position:absolute;left:0;top:50%;width:100%;height:1px;background:var(--line)}
+.divider span{position:relative;background:#1b2536;padding:0 12px}
+.auth-links{display:flex;justify-content:space-between;margin-top:16px}
+.link-btn{background:none;border:none;color:var(--green);font-weight:600;font-size:13px;cursor:pointer}
+.app-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.user-info{display:flex;align-items:center;gap:10px}
+.avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--blue));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff}
+.user-info h4{font-size:14px}
+.user-info p{font-size:12px;color:var(--sub)}
+.logout-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:8px 10px;border-radius:8px}
+.progress-card{background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(59,130,246,.05));border:1px solid rgba(16,185,129,.2);border-radius:18px;padding:18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.progress-card h3{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.streak{background:rgba(251,191,36,.15);color:var(--gold);border:1px solid rgba(251,191,36,.3);padding:2px 8px;border-radius:12px;font-size:12px;font-weight:700}
+.progress-card p{font-size:12px;color:var(--sub)}
+.ring{position:relative;width:60px;height:60px;border-radius:50%;background:conic-gradient(var(--green) 0deg,var(--line) 0deg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ring::before{content:"";position:absolute;width:46px;height:46px;border-radius:50%;background:var(--card)}
+.ring span{position:relative;font-size:12px;font-weight:700}
+.date-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;background:rgba(15,23,42,.4);padding:8px 12px;border-radius:14px;border:1px solid var(--line)}
+.date-btn{background:none;border:none;color:var(--sub);font-size:14px;padding:8px 12px;border-radius:8px;cursor:pointer}
+.date-btn:disabled{opacity:.3;cursor:default}
+.date-input{background:none;border:none;font-weight:600;font-size:14px;text-align:center;cursor:pointer;color-scheme:dark}
+.hijri{font-size:12px;color:var(--gold);text-align:center;margin-bottom:14px;min-height:16px}
+.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.tab{background:none;border:none;font-size:13px;font-weight:600;color:var(--sub);padding:8px 12px;border-radius:8px;cursor:pointer}
+.tab.active{color:var(--green);background:rgba(16,185,129,.1)}
+.prayer-card{background:rgba(15,23,42,.5);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+.prayer-head{display:flex;align-items:center;gap:12px}
+.prayer-icon{font-size:18px;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center}
+.prayer-title{font-size:15px;font-weight:600}
+.prayer-time{font-size:12px;color:var(--gold)}
+.status-group{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.08)}
+.status-btn{flex:1;padding:9px 2px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--sub);cursor:pointer}
+.status-btn.a-jamaah{background:rgba(16,185,129,.2);border-color:var(--green);color:var(--green)}
+.status-btn.a-individual{background:rgba(59,130,246,.2);border-color:var(--blue);color:var(--blue)}
+.status-btn.a-late{background:rgba(251,191,36,.2);border-color:var(--gold);color:var(--gold)}
+.status-btn.a-missed{background:rgba(239,68,68,.2);border-color:var(--red);color:var(--red)}
+.sunnah-item{width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(15,23,42,.4);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer;font-size:14px;font-weight:500;text-align:left}
+.sunnah-item i{color:var(--sub);font-size:18px}
+.sunnah-item.done{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3)}
+.sunnah-item.done i{color:var(--green)}
+.notes-label{font-size:12px;color:var(--sub);font-weight:600}
+.reflection{width:100%;height:100px;background:rgba(15,23,42,.5);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:14px;resize:none;margin-top:8px}
+.save-status{font-size:12px;color:var(--sub);text-align:right;margin-top:4px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--green);color:#0f172a;font-weight:700;font-size:13px;padding:10px 20px;border-radius:30px;box-shadow:0 8px 20px rgba(0,0,0,.3);transition:transform .3s;z-index:1000}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error{background:var(--red);color:#fff}
+</style>
 </head>
 <body>
-
 <div class="container">
-    <!-- Initial Loading State -->
-    <div id="loading-screen" class="loading-screen">
-        <i class="fa-solid fa-spinner spinner"></i>
-        <p style="margin-top:12px; font-size:13px; color:var(--text-sub);">Loading Salah Tracker...</p>
+  <div id="loading" class="loading"><i class="fa-solid fa-spinner"></i><p>Loading Salah Tracker...</p></div>
+
+  <div id="auth-screen" class="hidden">
+    <div class="auth-header">
+      <div class="auth-icon"><i class="fa-solid fa-kaaba"></i></div>
+      <h1 id="auth-title">Welcome back</h1>
+      <p>Your private, ad-free prayer journal</p>
     </div>
-
-    <!-- 1. AUTHENTICATION SCREEN -->
-    <div id="auth-screen" class="hidden">
-        <div class="auth-header">
-            <div class="auth-icon"><i class="fa-solid fa-kaaba"></i></div>
-            <h1 id="auth-title">Welcome Back</h1>
-            <p>Your private, ad-free spiritual journal</p>
-        </div>
-
-        <form onsubmit="handleAuthSubmit(event)">
-            <div class="form-group">
-                <label for="auth-email">Email Address</label>
-                <input type="email" id="auth-email" class="form-control" placeholder="you@example.com" required>
-            </div>
-            <div class="form-group" id="password-group">
-                <label for="auth-password">Password</label>
-                <input type="password" id="auth-password" class="form-control" placeholder="••••••••">
-            </div>
-
-            <button type="submit" class="btn btn-primary" id="btn-submit">Login</button>
-        </form>
-        
-        <div class="divider"><span>OR</span></div>
-
-        <button type="button" class="btn btn-google" onclick="handleGoogleAuth()">
-            <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7l2.79 2.16c1.63-1.51 2.57-3.73 2.57-6.49z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.2l-2.79-2.16c-.78.52-1.77.83-2.79.83-2.14 0-3.94-1.45-4.59-3.41L1.93 13.9C3.41 16.84 6.45 18 9 18z"/><path fill="#FBBC05" d="M4.41 11.06c-.17-.52-.26-1.07-.26-1.64s.09-1.12.26-1.64V5.23H1.93C1.35 6.39 1 7.66 1 9s.35 2.61.93 3.77l2.48-1.71z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4C13.46.96 11.42 0 9 0 6.45 0 3.41 1.16 1.93 4.1L4.41 5.8c.65-1.96 2.45-3.41 4.59-3.41z"/></svg>
-            Continue with Google
-        </button>
-
-        <div class="auth-links">
-            <span onclick="toggleAuthMode()" id="btn-toggle">Don't have an account? Sign Up</span>
-            <span onclick="handleForgotPassword()" id="btn-forgot">Forgot Password?</span>
-        </div>
+    <form onsubmit="handleAuthSubmit(event)">
+      <div class="form-group"><label for="auth-email">Email address</label>
+        <input type="email" id="auth-email" class="form-control" placeholder="you@example.com" autocomplete="email" required></div>
+      <div class="form-group"><label for="auth-password">Password</label>
+        <input type="password" id="auth-password" class="form-control" placeholder="At least 6 characters" minlength="6" autocomplete="current-password" required></div>
+      <button type="submit" class="btn btn-primary" id="btn-submit">Log in</button>
+    </form>
+    <div class="divider"><span>or</span></div>
+    <button type="button" class="btn btn-google" onclick="handleGoogleAuth()">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7l2.79 2.16c1.63-1.51 2.57-3.73 2.57-6.49z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.2l-2.79-2.16c-.78.52-1.77.83-2.79.83-2.14 0-3.94-1.45-4.59-3.41L1.93 13.9C3.41 16.84 6.45 18 9 18z"/><path fill="#FBBC05" d="M4.41 11.06c-.17-.52-.26-1.07-.26-1.64s.09-1.12.26-1.64V5.23H1.93C1.35 6.39 1 7.66 1 9s.35 2.61.93 3.77l2.48-1.71z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.4C13.46.96 11.42 0 9 0 6.45 0 3.41 1.16 1.93 4.1L4.41 5.8c.65-1.96 2.45-3.41 4.59-3.41z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-links">
+      <button type="button" class="link-btn" id="btn-toggle" onclick="toggleAuthMode()">Need an account? Sign up</button>
+      <button type="button" class="link-btn" onclick="handleForgotPassword()">Forgot password?</button>
     </div>
+  </div>
 
-    <!-- 2. MAIN APP DASHBOARD -->
-    <div id="app-screen" class="hidden">
-        <!-- Header -->
-        <div class="app-header">
-            <div class="user-info">
-                <div class="avatar" id="user-avatar">U</div>
-                <div class="user-details">
-                    <h4 id="display-name">User</h4>
-                    <p id="display-email">user@example.com</p>
-                </div>
-            </div>
-            <button class="logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
-        </div>
-
-        <!-- Date Selector -->
-        <div class="date-bar">
-            <button class="date-btn" onclick="changeDate(-1)" aria-label="Previous Day"><i class="fa-solid fa-chevron-left"></i></button>
-            <input type="date" id="tracker-date" class="date-input" onchange="loadDateData()">
-            <button class="date-btn" onclick="changeDate(1)" aria-label="Next Day"><i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-        <div id="hijri-display" class="hijri-display">Loading Hijri Date...</div>
-
-        <!-- Progress Card & Streak Tracker -->
-        <div class="progress-card">
-            <div class="progress-info">
-                <h3>Daily Completion <span class="streak-badge" id="streak-counter"><i class="fa-solid fa-fire"></i> 0 Day Streak</span></h3>
-                <p id="completed-count-text">0 of 5 Fardh prayers completed</p>
-            </div>
-            <div class="circular-progress" id="progress-circle">
-                <span class="progress-value" id="progress-percentage">0%</span>
-            </div>
-        </div>
-
-        <!-- Tab Controls -->
-        <div class="nav-tabs" role="tablist">
-            <button class="tab-btn active" role="tab" aria-selected="true" onclick="switchTab('fardh', this)">Fardh Prayers</button>
-            <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('sunnah', this)">Sunnah & Extra</button>
-            <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('notes', this)">Reflections</button>
-        </div>
-
-        <!-- TAB 1: FARDH PRAYERS -->
-        <div id="tab-fardh">
-            <div id="prayer-list"></div>
-        </div>
-
-        <!-- TAB 2: SUNNAH PRAYERS -->
-        <div id="tab-sunnah" class="hidden">
-            <div id="sunnah-list"></div>
-        </div>
-
-        <!-- TAB 3: DAILY REFLECTIONS -->
-        <div id="tab-notes" class="hidden">
-            <label for="reflection-text" style="font-size:12px; color:var(--text-sub); font-weight:600;">Daily Notes & Reflections</label>
-            <textarea id="reflection-text" class="reflection-box" placeholder="Record Surahs memorized, thoughts, or reflections for today..." oninput="handleReflectionInput()"></textarea>
-            <div style="font-size:11px; color:var(--text-sub); text-align:right; margin-top:4px;" id="save-status">Saved</div>
-        </div>
+  <div id="app-screen" class="hidden">
+    <div class="app-header">
+      <div class="user-info">
+        <div class="avatar" id="user-avatar">U</div>
+        <div><h4 id="display-name">User</h4><p id="display-email"></p></div>
+      </div>
+      <button class="logout-btn" onclick="logout()" aria-label="Log out"><i class="fa-solid fa-right-from-bracket"></i></button>
     </div>
+    <div class="date-bar">
+      <button class="date-btn" onclick="changeDate(-1)" aria-label="Previous day"><i class="fa-solid fa-chevron-left"></i></button>
+      <input type="date" id="tracker-date" class="date-input" aria-label="Choose date" onchange="loadDateData()">
+      <button class="date-btn" id="next-btn" onclick="changeDate(1)" aria-label="Next day"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+    <div id="hijri-display" class="hijri"></div>
+    <div class="progress-card">
+      <div>
+        <h3>Daily completion <span class="streak" id="streak-counter"><i class="fa-solid fa-fire"></i> 0 day streak</span></h3>
+        <p id="completed-count-text">0 of 5 fardh prayers logged</p>
+      </div>
+      <div class="ring" id="progress-circle"><span id="progress-percentage">0%</span></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab active" role="tab" aria-selected="true" aria-controls="tab-fardh" onclick="switchTab('fardh',this)">Fardh prayers</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="tab-sunnah" onclick="switchTab('sunnah',this)">Sunnah &amp; extra</button>
+      <button class="tab" role="tab" aria-selected="false" aria-controls="tab-notes" onclick="switchTab('notes',this)">Reflections</button>
+    </div>
+    <div id="tab-fardh" role="tabpanel"><div id="prayer-list"></div></div>
+    <div id="tab-sunnah" role="tabpanel" class="hidden"><div id="sunnah-list"></div></div>
+    <div id="tab-notes" role="tabpanel" class="hidden">
+      <label for="reflection-text" class="notes-label">Daily notes &amp; reflections</label>
+      <textarea id="reflection-text" class="reflection" placeholder="Surahs memorized, thoughts, reminders for today..." oninput="handleReflectionInput()"></textarea>
+      <div class="save-status" id="save-status" aria-live="polite">Saved</div>
+    </div>
+  </div>
 </div>
-
-<div id="toast" class="toast">Saved!</div>
+<div id="toast" class="toast" role="status">Saved</div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyCf3fUwyksRPnVyqjrLJpTxdnZxDYA_4Mo",
-        authDomain: "prayer-tracker-d9d1f.firebaseapp.com",
-        projectId: "prayer-tracker-d9d1f",
-        storageBucket: "prayer-tracker-d9d1f.firebasestorage.app",
-        messagingSenderId: "904988992102",
-        appId: "1:904988992102:web:7873d573ef75e9520383a7",
-        measurementId: "G-P7VLZ78NC1"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyCf3fUwyksRPnVyqjrLJpTxdnZxDYA_4Mo",
+  authDomain: "prayer-tracker-d9d1f.firebaseapp.com",
+  projectId: "prayer-tracker-d9d1f",
+  storageBucket: "prayer-tracker-d9d1f.firebasestorage.app",
+  messagingSenderId: "904988992102",
+  appId: "1:904988992102:web:7873d573ef75e9520383a7",
+  measurementId: "G-P7VLZ78NC1"
+};
+// Prayer-time settings. method 17 = JAKIM (Malaysia). Change lat/lng/method for another place.
+const PRAYER_CONFIG = { lat: 3.1390, lng: 101.6869, method: 17 };
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence({ synchronizeTabs: true }).catch(() => {}); // offline support
 
-    let isSignUpMode = false;
-    let currentSelectedDate = '';
-    let localDayData = {};
-    let activeRequestToken = 0;
-    let noteSaveTimeout = null;
-    let apiPrayerTimes = {};
+const $ = id => document.getElementById(id);
+let isSignUp = false, currentDate = '', localDayData = {}, times = {};
+let loadToken = 0, timesToken = 0, noteTimer = null;
 
-    const prayers = [
-        { id: 'fajr', name: 'Fajr', icon: '🌅' },
-        { id: 'dhuhr', name: 'Dhuhr', icon: '☀️' },
-        { id: 'asr', name: 'Asr', icon: '🌤️' },
-        { id: 'maghrib', name: 'Maghrib', icon: '🌇' },
-        { id: 'isha', name: 'Isha', icon: '🌙' }
-    ];
+const prayers = [
+  { id: 'fajr', name: 'Fajr', icon: '🌅' }, { id: 'dhuhr', name: 'Dhuhr', icon: '☀️' },
+  { id: 'asr', name: 'Asr', icon: '🌤️' }, { id: 'maghrib', name: 'Maghrib', icon: '🌇' },
+  { id: 'isha', name: 'Isha', icon: '🌙' }
+];
+const sunnahPrayers = [
+  { id: 'tahajjud', name: 'Tahajjud (night prayer)' }, { id: 'duha', name: 'Duha (forenoon)' },
+  { id: 'rawatib', name: 'Sunnah Rawatib' }, { id: 'witr', name: 'Witr prayer' }
+];
+const AUTH_ERR = {
+  'auth/invalid-credential': 'Incorrect email or password.',
+  'auth/wrong-password': 'Incorrect email or password.',
+  'auth/user-not-found': 'Incorrect email or password.',
+  'auth/email-already-in-use': 'An account with this email already exists. Try logging in.',
+  'auth/weak-password': 'Password must be at least 6 characters.',
+  'auth/invalid-email': 'Enter a valid email address.',
+  'auth/too-many-requests': 'Too many attempts. Wait a few minutes and try again.',
+  'auth/network-request-failed': 'No connection. Check your internet and try again.'
+};
+const authMsg = e => AUTH_ERR[e.code] || e.message;
+const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const dayRef = date => db.collection('users').doc(auth.currentUser.uid).collection('history').doc(date);
 
-    const sunnahPrayers = [
-        { id: 'tahajjud', name: 'Tahajjud (Night Prayer)' },
-        { id: 'duha', name: 'Duha (Forenoon)' },
-        { id: 'rawatib', name: 'Sunnah Rawatib' },
-        { id: 'witr', name: 'Witr Prayer' }
-    ];
+function showToast(msg, isError) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.toggle('error', !!isError);
+  t.classList.add('show');
+  clearTimeout(showToast.t);
+  showToast.t = setTimeout(() => t.classList.remove('show'), 2000);
+}
+const setSave = s => { $('save-status').textContent = s; };
 
-    // Check Google Auth Redirect result for mobile web compatibility
-    auth.getRedirectResult().then(result => {
-        if (result.user) showToast("Logged in successfully!");
-    }).catch(err => alert("Auth Error: " + err.message));
+/* ---------- Auth ---------- */
+auth.getRedirectResult().catch(err => alert(authMsg(err)));
 
-    // Listen for Auth State Changes
-    auth.onAuthStateChanged(user => {
-        document.getElementById('loading-screen').classList.add('hidden');
-        if (user) {
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('app-screen').classList.remove('hidden');
-            
-            const name = user.displayName || user.email.split('@')[0];
-            document.getElementById('display-name').innerText = name;
-            document.getElementById('display-email').innerText = user.email;
-            document.getElementById('user-avatar').innerText = name.charAt(0).toUpperCase();
+auth.onAuthStateChanged(user => {
+  $('loading').classList.add('hidden');
+  if (user) {
+    $('auth-screen').classList.add('hidden');
+    $('app-screen').classList.remove('hidden');
+    const name = user.displayName || (user.email || 'User').split('@')[0];
+    $('display-name').textContent = name;
+    $('display-email').textContent = user.email || '';
+    $('user-avatar').textContent = name.charAt(0).toUpperCase();
+    const today = fmt(new Date());
+    $('tracker-date').max = today;
+    $('tracker-date').value = today;
+    loadDateData();
+    refreshStreak();
+  } else {
+    localDayData = {}; times = {}; currentDate = '';
+    $('streak-counter').innerHTML = '<i class="fa-solid fa-fire"></i> 0 day streak';
+    $('auth-password').value = '';
+    $('app-screen').classList.add('hidden');
+    $('auth-screen').classList.remove('hidden');
+  }
+});
 
-            // Format date to local YYYY-MM-DD
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const todayStr = `${year}-${month}-${day}`;
+function toggleAuthMode() {
+  isSignUp = !isSignUp;
+  $('auth-title').textContent = isSignUp ? 'Create account' : 'Welcome back';
+  $('btn-submit').textContent = isSignUp ? 'Sign up' : 'Log in';
+  $('btn-toggle').textContent = isSignUp ? 'Have an account? Log in' : 'Need an account? Sign up';
+  $('auth-password').autocomplete = isSignUp ? 'new-password' : 'current-password';
+}
+function handleAuthSubmit(e) {
+  e.preventDefault();
+  const email = $('auth-email').value.trim(), pw = $('auth-password').value;
+  if (pw.length < 6) return alert('Password must be at least 6 characters.');
+  const p = isSignUp ? auth.createUserWithEmailAndPassword(email, pw) : auth.signInWithEmailAndPassword(email, pw);
+  p.catch(err => alert(authMsg(err)));
+}
+function handleGoogleAuth() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err => {
+    if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'].includes(err.code)) {
+      auth.signInWithRedirect(provider);
+    } else if (!['auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(err.code)) {
+      alert(authMsg(err));
+    }
+  });
+}
+function handleForgotPassword() {
+  const email = $('auth-email').value.trim();
+  if (!email) return alert('Enter your email address first, then tap "Forgot password?".');
+  auth.sendPasswordResetEmail(email)
+    .then(() => alert('If an account exists for that email, a reset link is on its way.'))
+    .catch(err => alert(authMsg(err)));
+}
+function logout() { flushNote(); auth.signOut(); }
 
-            const datePicker = document.getElementById('tracker-date');
-            datePicker.max = todayStr;
-            datePicker.value = todayStr;
-            currentSelectedDate = todayStr;
+/* ---------- Navigation ---------- */
+function changeDate(delta) {
+  const input = $('tracker-date');
+  if (!input.value) return;
+  const [y, m, d] = input.value.split('-').map(Number);
+  const next = new Date(y, m - 1, d + delta);
+  const s = fmt(next);
+  if (input.max && s > input.max) return;
+  input.value = s;
+  loadDateData();
+}
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+  el.classList.add('active'); el.setAttribute('aria-selected', 'true');
+  ['fardh', 'sunnah', 'notes'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
+}
 
-            fetchPrayerTimesAndHijri(todayStr);
-            loadDateData();
-            calculateStreak(user.uid);
-        } else {
-            document.getElementById('auth-screen').classList.remove('hidden');
-            document.getElementById('app-screen').classList.add('hidden');
-        }
+/* ---------- Notes (debounced autosave) ---------- */
+function handleReflectionInput() {
+  setSave('Typing...');
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => { noteTimer = null; saveReflection(); }, 1000);
+}
+function flushNote() {
+  if (!noteTimer) return;
+  clearTimeout(noteTimer); noteTimer = null;
+  saveReflection();
+}
+function saveReflection() {
+  if (!auth.currentUser || !currentDate) return;
+  const text = $('reflection-text').value;
+  localDayData.notes = text;
+  setSave('Saving...');
+  dayRef(currentDate).set({ notes: text }, { merge: true })
+    .then(() => setSave('Saved'))
+    .catch(() => { setSave('Not saved'); showToast("Couldn't save your note", true); });
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushNote(); });
+window.addEventListener('pagehide', flushNote);
+
+/* ---------- Load / save a day ---------- */
+function loadDateData() {
+  if (!auth.currentUser || !$('tracker-date').value) return;
+  flushNote(); // saves pending note to the previous date first
+  currentDate = $('tracker-date').value;
+  $('next-btn').disabled = currentDate >= $('tracker-date').max;
+  const token = ++loadToken;
+  fetchTimes(currentDate);
+  localDayData = {};
+  $('reflection-text').value = '';
+  renderAll();
+  dayRef(currentDate).get().then(doc => {
+    if (token !== loadToken) return; // ignore stale responses
+    localDayData = doc.exists ? doc.data() : {};
+    $('reflection-text').value = localDayData.notes || '';
+    setSave('Saved');
+    renderAll();
+  }).catch(() => { if (token === loadToken) showToast("Couldn't load this day", true); });
+}
+
+function setPrayerStatus(id, status) {
+  if (!auth.currentUser) return;
+  const date = currentDate, prev = localDayData[id];
+  const cur = prev === true ? 'individual' : prev;
+  const next = cur === status ? 'none' : status;
+  localDayData[id] = next;
+  renderFardh(); updateProgress();
+  dayRef(date).set({ [id]: next }, { merge: true })
+    .then(() => { showToast('Updated'); refreshStreak(); })
+    .catch(() => {
+      if (date === currentDate) { localDayData[id] = prev; renderFardh(); updateProgress(); }
+      showToast("Couldn't save. Try again.", true);
     });
+}
+function toggleSunnah(id) {
+  if (!auth.currentUser) return;
+  const date = currentDate, prev = localDayData[id] === true;
+  localDayData[id] = !prev;
+  renderSunnah();
+  dayRef(date).set({ [id]: !prev }, { merge: true })
+    .then(() => showToast('Saved'))
+    .catch(() => {
+      if (date === currentDate) { localDayData[id] = prev; renderSunnah(); }
+      showToast("Couldn't save. Try again.", true);
+    });
+}
 
-    function toggleAuthMode() {
-        isSignUpMode = !isSignUpMode;
-        document.getElementById('auth-title').innerText = isSignUpMode ? "Create Account" : "Welcome Back";
-        document.getElementById('btn-submit').innerText = isSignUpMode ? "Sign Up" : "Login";
-        document.getElementById('btn-toggle').innerText = isSignUpMode ? "Already have an account? Login" : "Don't have an account? Sign Up";
-    }
+/* ---------- Rendering ---------- */
+function renderAll() { renderFardh(); renderSunnah(); updateProgress(); }
 
-    function handleAuthSubmit(e) {
-        e.preventDefault();
-        const email = document.getElementById('auth-email').value.trim();
-        const password = document.getElementById('auth-password').value;
+function renderFardh() {
+  const box = $('prayer-list');
+  box.innerHTML = '';
+  prayers.forEach(p => {
+    let s = localDayData[p.id];
+    if (s === true) s = 'individual';
+    if (!s) s = 'none';
+    const raw = times[p.name] || '';
+    const tm = /^\d{2}:\d{2}/.test(raw) ? raw.slice(0, 5) : ''; // validated before insertion
+    const opts = [['jamaah', "Jama'ah"], ['individual', 'On time'], ['late', 'Late/Qada'], ['missed', 'Missed']];
+    const card = document.createElement('div');
+    card.className = 'prayer-card';
+    card.innerHTML = `
+      <div class="prayer-head"><div class="prayer-icon" aria-hidden="true">${p.icon}</div>
+        <div><div class="prayer-title">${p.name}</div>${tm ? `<div class="prayer-time">${tm}</div>` : ''}</div></div>
+      <div class="status-group" role="group" aria-label="${p.name} status">
+        ${opts.map(([v, l]) => `<button type="button" class="status-btn ${s === v ? 'a-' + v : ''}" aria-pressed="${s === v}" onclick="setPrayerStatus('${p.id}','${v}')">${l}</button>`).join('')}
+      </div>`;
+    box.appendChild(card);
+  });
+}
 
-        if (isSignUpMode) {
-            auth.createUserWithEmailAndPassword(email, password).catch(err => alert(err.message));
-        } else {
-            auth.signInWithEmailAndPassword(email, password).catch(err => alert(err.message));
-        }
-    }
+function renderSunnah() {
+  const box = $('sunnah-list');
+  box.innerHTML = '';
+  sunnahPrayers.forEach(s => {
+    const on = localDayData[s.id] === true;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'sunnah-item' + (on ? ' done' : '');
+    b.setAttribute('role', 'checkbox');
+    b.setAttribute('aria-checked', on);
+    b.onclick = () => toggleSunnah(s.id);
+    b.innerHTML = `<span>${s.name}</span><i class="fa-solid ${on ? 'fa-square-check' : 'fa-square'}" aria-hidden="true"></i>`;
+    box.appendChild(b);
+  });
+}
 
-    function handleGoogleAuth() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        auth.signInWithPopup(provider).catch(() => {
-            // Fallback to redirect if popups are blocked on mobile devices
-            auth.signInWithRedirect(provider);
-        });
-    }
+function updateProgress() {
+  const done = prayers.filter(p => ['true', 'jamaah', 'individual', 'late'].includes(String(localDayData[p.id]))).length;
+  const pct = Math.round(done / 5 * 100);
+  $('progress-percentage').textContent = pct + '%';
+  $('completed-count-text').textContent = `${done} of 5 fardh prayers logged`;
+  $('progress-circle').style.background = `conic-gradient(var(--green) ${pct * 3.6}deg, var(--line) 0deg)`;
+}
 
-    function handleForgotPassword() {
-        const email = document.getElementById('auth-email').value.trim();
-        if (!email) return alert("Please enter your email address in the field above first.");
-        auth.sendPasswordResetEmail(email)
-            .then(() => alert("Password reset link sent to your email!"))
-            .catch(err => alert(err.message));
-    }
+/* ---------- Prayer times & Hijri date ---------- */
+function fetchTimes(date) {
+  const token = ++timesToken;
+  times = {};
+  $('hijri-display').textContent = '';
+  const [y, m, d] = date.split('-');
+  const c = PRAYER_CONFIG;
+  fetch(`https://api.aladhan.com/v1/timings/${d}-${m}-${y}?latitude=${c.lat}&longitude=${c.lng}&method=${c.method}`)
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(res => {
+      if (token !== timesToken || !res.data) return;
+      times = res.data.timings || {};
+      const h = res.data.date && res.data.date.hijri;
+      if (h) $('hijri-display').textContent = `${h.day} ${h.month.en} ${h.year} AH`;
+      renderFardh();
+    })
+    .catch(() => {}); // times simply stay hidden if the request fails
+}
 
-    function logout() { auth.signOut(); }
-
-    // UTC-Safe Date Navigation Fix
-    function changeDate(days) {
-        const dateInput = document.getElementById('tracker-date');
-        const parts = dateInput.value.split('-');
-        const d = new Date(parts[0], parts[1] - 1, parts[2]);
-        d.setDate(d.getDate() + days);
-
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const newDateStr = `${year}-${month}-${day}`;
-
-        if (dateInput.max && newDateStr > dateInput.max) return;
-
-        dateInput.value = newDateStr;
-        loadDateData();
-    }
-
-    function switchTab(tabName, el) {
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-            btn.setAttribute('aria-selected', 'false');
-        });
-        el.classList.add('active');
-        el.setAttribute('aria-selected', 'true');
-
-        document.getElementById('tab-fardh').classList.add('hidden');
-        document.getElementById('tab-sunnah').classList.add('hidden');
-        document.getElementById('tab-notes').classList.add('hidden');
-
-        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-    }
-
-    // Auto-Saving Reflection with Debounce & Date Switch Protection
-    function handleReflectionInput() {
-        document.getElementById('save-status').innerText = "Typing...";
-        clearTimeout(noteSaveTimeout);
-        noteSaveTimeout = setTimeout(() => {
-            saveReflection();
-        }, 1000);
-    }
-
-    function saveReflection() {
-        const user = auth.currentUser;
-        if (!user || !currentSelectedDate) return;
-
-        const text = document.getElementById('reflection-text').value;
-        localDayData.notes = text;
-        document.getElementById('save-status').innerText = "Saving...";
-
-        db.collection('users').doc(user.uid).collection('history').doc(currentSelectedDate)
-            .set({ notes: text }, { merge: true })
-            .then(() => {
-                document.getElementById('save-status').innerText = "Saved";
-            });
-    }
-
-    // Race-Condition Safe Data Loading
-    function loadDateData() {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        // Auto-save any pending reflection notes before switching date
-        if (noteSaveTimeout) {
-            clearTimeout(noteSaveTimeout);
-            saveReflection();
-        }
-
-        currentSelectedDate = document.getElementById('tracker-date').value;
-        const thisToken = ++activeRequestToken;
-
-        fetchPrayerTimesAndHijri(currentSelectedDate);
-
-        const docRef = db.collection('users').doc(user.uid).collection('history').doc(currentSelectedDate);
-        docRef.get().then(doc => {
-            if (thisToken !== activeRequestToken) return; // Prevent race condition stale updates
-
-            localDayData = doc.exists ? doc.data() : {};
-            renderFardhList();
-            renderSunnahList();
-            document.getElementById('reflection-text').value = localDayData.notes || '';
-            document.getElementById('save-status').innerText = "Saved";
-            updateProgress();
-        });
-    }
-
-    // Optimistic Instant UI Update
-    function setPrayerStatus(prayerId, newStatus) {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        let current = localDayData[prayerId];
-        if (current === true) current = 'individual';
-
-        const finalStatus = (current === newStatus) ? 'none' : newStatus;
-        localDayData[prayerId] = finalStatus;
-
-        renderFardhList();
-        updateProgress();
-
-        db.collection('users').doc(user.uid).collection('history').doc(currentSelectedDate)
-            .set({ [prayerId]: finalStatus }, { merge: true })
-            .then(() => showToast("Updated!"))
-            .catch(err => console.error("Save failed: ", err));
-    }
-
-    function toggleSunnah(sunnahId) {
-        const user = auth.currentUser;
-        if (!user) return;
-
-        localDayData[sunnahId] = !localDayData[sunnahId];
-        renderSunnahList();
-
-        db.collection('users').doc(user.uid).collection('history').doc(currentSelectedDate)
-            .set({ [sunnahId]: localDayData[sunnahId] }, { merge: true })
-            .then(() => showToast("Saved!"));
-    }
-
-    function renderFardhList() {
-        const container = document.getElementById('prayer-list');
-        container.innerHTML = '';
-
-        prayers.forEach(prayer => {
-            let status = localDayData[prayer.id];
-            if (status === true) status = 'individual';
-            if (status === false || !status) status = 'none';
-
-            const timeSub = apiPrayerTimes[prayer.name] ? `<div class="prayer-time-sub">${apiPrayerTimes[prayer.name]}</div>` : '';
-
-            const card = document.createElement('div');
-            card.className = 'prayer-card';
-            card.innerHTML = `
-                <div class="prayer-main">
-                    <div class="prayer-header">
-                        <div class="prayer-icon">${prayer.icon}</div>
-                        <div>
-                            <div class="prayer-title">${prayer.name}</div>
-                            ${timeSub}
-                        </div>
-                    </div>
-                </div>
-                <div class="status-group" role="group" aria-label="${prayer.name} Status">
-                    <button class="status-btn ${status === 'jamaah' ? 'active-jamaah' : ''}" onclick="setPrayerStatus('${prayer.id}', 'jamaah')">Jama'ah</button>
-                    <button class="status-btn ${status === 'individual' ? 'active-individual' : ''}" onclick="setPrayerStatus('${prayer.id}', 'individual')">On Time</button>
-                    <button class="status-btn ${status === 'late' ? 'active-late' : ''}" onclick="setPrayerStatus('${prayer.id}', 'late')">Late/Qada</button>
-                    <button class="status-btn ${status === 'missed' ? 'active-missed' : ''}" onclick="setPrayerStatus('${prayer.id}', 'missed')">Missed</button>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-    }
-
-    function renderSunnahList() {
-        const container = document.getElementById('sunnah-list');
-        container.innerHTML = '';
-
-        sunnahPrayers.forEach(s => {
-            const isChecked = localDayData[s.id] === true;
-            const item = document.createElement('div');
-            item.className = `sunnah-item ${isChecked ? 'completed' : ''}`;
-            item.onclick = () => toggleSunnah(s.id);
-            item.innerHTML = `
-                <span style="font-size:14px; font-weight:500;">${s.name}</span>
-                <input type="checkbox" ${isChecked ? 'checked' : ''} tabindex="-1">
-            `;
-            container.appendChild(item);
-        });
-    }
-
-    function updateProgress() {
-        let completed = 0;
-        prayers.forEach(p => {
-            const val = localDayData[p.id];
-            if (val === true || val === 'jamaah' || val === 'individual' || val === 'late') completed++;
-        });
-
-        const percentage = Math.round((completed / 5) * 100);
-        document.getElementById('progress-percentage').innerText = `${percentage}%`;
-        document.getElementById('completed-count-text').innerText = `${completed} of 5 Fardh prayers logged`;
-
-        const circle = document.getElementById('progress-circle');
-        circle.style.background = `conic-gradient(var(--accent-green) ${percentage * 3.6}deg, var(--card-border) 0deg)`;
-    }
-
-    // Dynamic Location Prayer Times & Hijri API Fetching
-    function fetchPrayerTimesAndHijri(dateStr) {
-        const parts = dateStr.split('-');
-        const formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-
-        fetch(`https://api.aladhan.com/v1/timings/${formattedDate}?latitude=3.1390&longitude=101.6869&method=3`)
-            .then(res => res.json())
-            .then(resData => {
-                if (resData && resData.data) {
-                    apiPrayerTimes = resData.data.timings;
-                    const hijri = resData.data.date.hijri;
-                    document.getElementById('hijri-display').innerText = `${hijri.day} ${hijri.month.en} ${hijri.year} AH`;
-                    renderFardhList();
-                }
-            }).catch(() => {
-                document.getElementById('hijri-display').innerText = '';
-            });
-    }
-
-    // Streak Calculation Algorithm
-    function calculateStreak(uid) {
-        db.collection('users').doc(uid).collection('history')
-            .get()
-            .then(snapshot => {
-                let datesLogged = new Set();
-                snapshot.forEach(doc => {
-                    let d = doc.data();
-                    let count = 0;
-                    prayers.forEach(p => {
-                        if (d[p.id] && d[p.id] !== 'none' && d[p.id] !== 'missed') count++;
-                    });
-                    if (count >= 5) datesLogged.add(doc.id);
-                });
-
-                let streak = 0;
-                let checkDate = new Date();
-                while (true) {
-                    let y = checkDate.getFullYear();
-                    let m = String(checkDate.getMonth() + 1).padStart(2, '0');
-                    let d = String(checkDate.getDate()).padStart(2, '0');
-                    let key = `${y}-${m}-${d}`;
-
-                    if (datesLogged.has(key)) {
-                        streak++;
-                        checkDate.setDate(checkDate.getDate() - 1);
-                    } else if (streak === 0) {
-                        // Check yesterday if today isn't completed yet
-                        checkDate.setDate(checkDate.getDate() - 1);
-                        let y2 = checkDate.getFullYear();
-                        let m2 = String(checkDate.getMonth() + 1).padStart(2, '0');
-                        let d2 = String(checkDate.getDate()).padStart(2, '0');
-                        if (datesLogged.has(`${y2}-${m2}-${d2}`)) {
-                            streak++;
-                            checkDate.setDate(checkDate.getDate() - 1);
-                        } else break;
-                    } else break;
-                }
-
-                document.getElementById('streak-counter').innerHTML = `<i class="fa-solid fa-fire"></i> ${streak} Day Streak`;
-            });
-    }
-
-    function showToast(msg) {
-        const toast = document.getElementById('toast');
-        toast.innerText = msg;
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 1800);
-    }
+/* ---------- Streak (last 400 days, refreshed after each save) ---------- */
+function refreshStreak() {
+  const u = auth.currentUser;
+  if (!u) return;
+  db.collection('users').doc(u.uid).collection('history')
+    .orderBy(firebase.firestore.FieldPath.documentId(), 'desc').limit(400).get()
+    .then(snap => {
+      const full = new Set();
+      snap.forEach(doc => {
+        const v = doc.data();
+        if (prayers.every(p => v[p.id] && v[p.id] !== 'none' && v[p.id] !== 'missed')) full.add(doc.id);
+      });
+      const c = new Date();
+      if (!full.has(fmt(c))) c.setDate(c.getDate() - 1); // today not finished yet
+      let n = 0;
+      while (full.has(fmt(c))) { n++; c.setDate(c.getDate() - 1); }
+      $('streak-counter').innerHTML = `<i class="fa-solid fa-fire"></i> ${n} day streak`;
+    })
+    .catch(() => {});
+}
 </script>
 </body>
 </html>
