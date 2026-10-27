@@ -120,6 +120,7 @@
         .date-btn:hover { color: var(--text-main); background-color: rgba(255,255,255,0.05); }
         .date-input { background: none; border: none; color: var(--text-main); font-weight: 600; font-size: 13px; text-align: center; outline: none; cursor: pointer; }
         .hijri-display { font-size: 11px; color: var(--accent-gold); text-align: center; margin-top: -10px; margin-bottom: 14px; font-weight: 500; }
+        .location-display { font-size: 10px; color: var(--text-sub); text-align: center; margin-top: -10px; margin-bottom: 12px; }
 
         .nav-tabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px; }
         .tab-btn {
@@ -222,6 +223,7 @@
             <button class="date-btn" onclick="changeDate(1)" aria-label="Next Day"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
         <div id="hijri-display" class="hijri-display">Loading Hijri Date...</div>
+        <div id="location-display" class="location-display"><i class="fa-solid fa-location-dot"></i> Detecting location...</div>
 
         <div class="progress-card">
             <div class="progress-info">
@@ -281,6 +283,15 @@
     let noteSaveTimeout = null;
     let apiPrayerTimes = {};
 
+    // Dynamic user location settings with safe fallback (Default: Kuala Lumpur, Method 17)
+    let userLocation = {
+        lat: 3.1390,
+        lng: 101.6869,
+        method: 3, // Auto method by AlAdhan or regional default
+        city: "Kuala Lumpur",
+        country: "Malaysia"
+    };
+
     const prayers = [
         { id: 'fajr', name: 'Fajr', icon: '🌅' },
         { id: 'dhuhr', name: 'Dhuhr', icon: '☀️' },
@@ -296,15 +307,81 @@
         { id: 'witr', name: 'Witr Prayer' }
     ];
 
-    // Converts 24-hour time strings (e.g. "13:25") to 12-hour format (e.g. "1:25 PM")
     function formatTo12Hour(time24) {
         if (!time24 || !/^\d{2}:\d{2}/.test(time24)) return '';
         const [hoursStr, minutesStr] = time24.split(':');
         let hours = parseInt(hoursStr, 10);
         const ampm = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12;
-        hours = hours ? hours : 12; // convert '0' to '12'
+        hours = hours ? hours : 12;
         return `${hours}:${minutesStr} ${ampm}`;
+    }
+
+    // Determine regional calculation method based on country
+    function getCalculationMethod(countryCode) {
+        switch (countryCode) {
+            case 'MY': return 17; // JAKIM Malaysia
+            case 'SG': return 11; // MUIS Singapore
+            case 'ID': return 15; // Kemenag Indonesia
+            case 'US': case 'CA': return 2; // ISNA North America
+            case 'GB': case 'FR': case 'DE': return 3; // MWL Europe
+            case 'EG': return 5; // Egyptian General Authority
+            case 'SA': return 4; // Umm Al-Qura University
+            case 'PK': case 'IN': case 'BD': return 1; // University of Islamic Sciences, Karachi
+            case 'AE': case 'QA': case 'KW': return 16; // Dubai / Gulf
+            default: return 3; // Muslim World League as standard global default
+        }
+    }
+
+    // Auto-detect location via Browser Geolocation API -> IP Geolocation Fallback -> Default
+    function initializeUserLocation(callback) {
+        const locationElem = document.getElementById('location-display');
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    userLocation.lat = pos.coords.latitude;
+                    userLocation.lng = pos.coords.longitude;
+                    
+                    // Reverse geocode to show city/country name
+                    fetch(`https://api.aladhan.com/v1/qibla/${userLocation.lat}/${userLocation.lng}`)
+                        .then(() => {
+                            locationElem.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Precise GPS Location`;
+                        })
+                        .catch(() => {})
+                        .finally(() => callback());
+                },
+                () => {
+                    // Geolocation denied/failed -> Fallback to IP Geolocation
+                    fetchIPLocation(callback);
+                },
+                { timeout: 5000 }
+            );
+        } else {
+            fetchIPLocation(callback);
+        }
+    }
+
+    function fetchIPLocation(callback) {
+        const locationElem = document.getElementById('location-display');
+        fetch('https://ipapi.co/json/')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.latitude && data.longitude) {
+                    userLocation.lat = data.latitude;
+                    userLocation.lng = data.longitude;
+                    userLocation.method = getCalculationMethod(data.country_code);
+                    userLocation.city = data.city || data.region;
+                    userLocation.country = data.country_name;
+                    locationElem.innerHTML = `<i class="fa-solid fa-location-dot"></i> ${userLocation.city}, ${userLocation.country}`;
+                } else {
+                    locationElem.innerHTML = `<i class="fa-solid fa-location-dot"></i> Kuala Lumpur, Malaysia (Default)`;
+                }
+            })
+            .catch(() => {
+                locationElem.innerHTML = `<i class="fa-solid fa-location-dot"></i> Kuala Lumpur, Malaysia (Default)`;
+            })
+            .finally(() => callback());
     }
 
     document.addEventListener('visibilitychange', () => {
@@ -341,7 +418,9 @@
             datePicker.value = todayStr;
             currentSelectedDate = todayStr;
 
-            loadDateData();
+            initializeUserLocation(() => {
+                loadDateData();
+            });
             calculateStreak(user.uid);
         } else {
             document.getElementById('auth-screen').classList.remove('hidden');
@@ -614,8 +693,7 @@
         const parts = dateStr.split('-');
         const formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
 
-        // Method 17 = JAKIM (Malaysia default)
-        fetch(`https://api.aladhan.com/v1/timings/${formattedDate}?latitude=3.1390&longitude=101.6869&method=17`)
+        fetch(`https://api.aladhan.com/v1/timings/${formattedDate}?latitude=${userLocation.lat}&longitude=${userLocation.lng}&method=${userLocation.method}`)
             .then(res => res.json())
             .then(resData => {
                 if (requestToken && requestToken !== activeRequestToken) return;
