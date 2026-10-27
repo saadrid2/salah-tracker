@@ -52,7 +52,6 @@
             padding: 28px 24px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             position: relative;
-            overflow: hidden;
         }
 
         .hidden { display: none !important; }
@@ -115,10 +114,37 @@
         .circular-progress::before { content: ""; position: absolute; width: 46px; height: 46px; border-radius: 50%; background-color: var(--card-bg); }
         .progress-value { position: relative; font-size: 12px; font-weight: 700; color: var(--text-main); }
 
-        .date-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; background-color: rgba(15, 23, 42, 0.4); padding: 8px 12px; border-radius: 14px; border: 1px solid var(--card-border); }
+        /* Custom Date Bar & Dropdown Calendar */
+        .date-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; background-color: rgba(15, 23, 42, 0.4); padding: 8px 12px; border-radius: 14px; border: 1px solid var(--card-border); position: relative; }
         .date-btn { background: none; border: none; color: var(--text-sub); font-size: 14px; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
         .date-btn:hover { color: var(--text-main); background-color: rgba(255,255,255,0.05); }
-        .date-input { background: none; border: none; color: var(--text-main); font-weight: 600; font-size: 13px; text-align: center; outline: none; cursor: pointer; }
+        .date-display-btn { background: none; border: none; color: var(--text-main); font-weight: 600; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .date-display-btn:hover { color: var(--accent-green); }
+
+        /* Custom Popup Calendar Dropdown */
+        .calendar-dropdown {
+            position: absolute; top: 110%; left: 50%; transform: translateX(-50%);
+            width: 320px; background-color: #1e293b; border: 1px solid var(--card-border);
+            border-radius: 20px; padding: 18px; box-shadow: 0 15px 35px rgba(0,0,0,0.5); z-index: 100;
+        }
+        .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-weight: 700; font-size: 15px; color: var(--text-main); }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+        .cal-weekdays { font-size: 11px; font-weight: 600; color: var(--text-sub); padding-bottom: 6px; }
+        .cal-day {
+            aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 12px; font-weight: 600; cursor: pointer; position: relative;
+            background-color: rgba(255,255,255,0.02); color: var(--text-main); border: 1px solid transparent; transition: all 0.2s;
+        }
+        .cal-day:hover { background-color: rgba(255,255,255,0.08); }
+        .cal-day.selected { border-color: var(--accent-green); background-color: rgba(16, 185, 129, 0.15); }
+        .cal-day.muted { color: var(--text-sub); opacity: 0.4; }
+        .cal-day.future { opacity: 0.2; pointer-events: none; }
+        
+        /* Status Indicator Dots inside Calendar Days */
+        .status-dot { width: 5px; height: 5px; border-radius: 50%; position: absolute; bottom: 4px; }
+        .status-dot.complete { background-color: var(--accent-green); box-shadow: 0 0 4px var(--accent-green); }
+        .status-dot.incomplete { background-color: var(--accent-red); box-shadow: 0 0 4px var(--accent-red); }
+
         .hijri-display { font-size: 11px; color: var(--accent-gold); text-align: center; margin-top: -10px; margin-bottom: 14px; font-weight: 500; }
         .location-display { font-size: 10px; color: var(--text-sub); text-align: center; margin-top: -10px; margin-bottom: 12px; }
 
@@ -155,7 +181,6 @@
         }
         .sunnah-item.completed { background-color: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
 
-        /* Qada Tracker Styling */
         .qada-card {
             background-color: rgba(15, 23, 42, 0.5); border: 1px solid var(--card-border); border-radius: 16px;
             padding: 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;
@@ -231,11 +256,29 @@
             <button class="logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
         </div>
 
+        <!-- CUSTOM DATE BAR WITH DROPDOWN CALENDAR -->
         <div class="date-bar">
             <button class="date-btn" onclick="changeDate(-1)" aria-label="Previous Day"><i class="fa-solid fa-chevron-left"></i></button>
-            <input type="date" id="tracker-date" class="date-input" aria-label="Select Date" onchange="loadDateData()">
+            <button type="button" class="date-display-btn" onclick="toggleCalendarDropdown()">
+                <i class="fa-regular fa-calendar" style="color:var(--accent-green)"></i>
+                <span id="current-date-label">27/10/2026</span>
+            </button>
             <button class="date-btn" onclick="changeDate(1)" aria-label="Next Day"><i class="fa-solid fa-chevron-right"></i></button>
+
+            <!-- Popup Calendar Modal -->
+            <div id="calendar-dropdown" class="calendar-dropdown hidden">
+                <div class="cal-header">
+                    <button type="button" class="date-btn" onclick="changeCalendarMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                    <span id="cal-month-year-label">October 2026</span>
+                    <button type="button" class="date-btn" onclick="changeCalendarMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+                <div class="cal-grid cal-weekdays">
+                    <div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div><div>Su</div>
+                </div>
+                <div class="cal-grid" id="cal-days-container"></div>
+            </div>
         </div>
+
         <div id="hijri-display" class="hijri-display">Loading Hijri Date...</div>
         <div id="location-display" class="location-display"><i class="fa-solid fa-location-dot"></i> Detecting location...</div>
 
@@ -264,7 +307,6 @@
             <div id="sunnah-list"></div>
         </div>
 
-        <!-- TAB: QADA BACKLOG COUNTER -->
         <div id="tab-qada" class="hidden">
             <div style="font-size:12px; color:var(--text-sub); margin-bottom:12px;">
                 Track and clear makeup prayers accumulated from missed logs.
@@ -300,12 +342,15 @@
     db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
     let isSignUpMode = false;
-    let currentSelectedDate = '';
+    let currentSelectedDate = ''; // Format YYYY-MM-DD
     let localDayData = {};
     let activeRequestToken = 0;
     let noteSaveTimeout = null;
     let apiPrayerTimes = {};
     let qadaCounts = { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 };
+    let allHistoryCache = {}; // Cache history data for calendar dots
+
+    let calendarViewDate = new Date(); // Tracks month/year currently shown in dropdown calendar
 
     let userLocation = {
         lat: 3.1390,
@@ -403,6 +448,103 @@
             .finally(() => callback());
     }
 
+    // Close calendar dropdown when clicking outside
+    window.addEventListener('click', (e) => {
+        const bar = document.querySelector('.date-bar');
+        const dropdown = document.getElementById('calendar-dropdown');
+        if (bar && !bar.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    function toggleCalendarDropdown() {
+        const dropdown = document.getElementById('calendar-dropdown');
+        dropdown.classList.toggle('hidden');
+        if (!dropdown.classList.contains('hidden')) {
+            renderCustomCalendar();
+        }
+    }
+
+    function changeCalendarMonth(delta) {
+        calendarViewDate.setMonth(calendarViewDate.getMonth() + delta);
+        renderCustomCalendar();
+    }
+
+    function renderCustomCalendar() {
+        const container = document.getElementById('cal-days-container');
+        container.innerHTML = '';
+
+        const year = calendarViewDate.getFullYear();
+        const month = calendarViewDate.getMonth();
+
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        document.getElementById('cal-month-year-label').innerText = `${monthNames[month]} ${year}`;
+
+        const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; // Monday start
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        const prevTotalDays = new Date(year, month, 0).getDate();
+
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+        // Previous month trailing days
+        for (let i = firstDayIndex - 1; i >= 0; i--) {
+            const dayNum = prevTotalDays - i;
+            const div = document.createElement('div');
+            div.className = 'cal-day muted';
+            div.innerText = dayNum;
+            container.appendChild(div);
+        }
+
+        // Current month days
+        for (let d = 1; d <= totalDays; d++) {
+            const mStr = String(month + 1).padStart(2, '0');
+            const dStr = String(d).padStart(2, '0');
+            const dateKey = `${year}-${mStr}-${dStr}`;
+
+            const div = document.createElement('div');
+            div.className = 'cal-day';
+            if (dateKey === currentSelectedDate) div.classList.add('selected');
+            if (dateKey > todayStr) div.classList.add('future');
+
+            div.innerText = d;
+
+            // Check completion status from history cache
+            if (allHistoryCache[dateKey]) {
+                let completedCount = 0;
+                let hasMissed = false;
+                let data = allHistoryCache[dateKey];
+
+                prayers.forEach(p => {
+                    let val = data[p.id];
+                    if (val === true || val === 'jamaah' || val === 'individual' || val === 'late') completedCount++;
+                    if (val === 'missed') hasMissed = true;
+                });
+
+                const dot = document.createElement('div');
+                if (completedCount === 5) {
+                    dot.className = 'status-dot complete';
+                } else {
+                    dot.className = 'status-dot incomplete';
+                }
+                div.appendChild(dot);
+            }
+
+            div.onclick = () => {
+                if (dateKey <= todayStr) {
+                    currentSelectedDate = dateKey;
+                    const parts = dateKey.split('-');
+                    document.getElementById('tracker-date-val'] = dateKey;
+                    document.getElementById('current-date-label').innerText = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                    document.getElementById('calendar-dropdown').classList.add('hidden');
+                    loadDateData();
+                }
+            };
+
+            container.appendChild(div);
+        }
+    }
+
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden' && noteSaveTimeout) {
             clearTimeout(noteSaveTimeout);
@@ -432,13 +574,14 @@
             const day = String(now.getDate()).padStart(2, '0');
             const todayStr = `${year}-${month}-${day}`;
 
-            const datePicker = document.getElementById('tracker-date');
-            datePicker.max = todayStr;
-            datePicker.value = todayStr;
             currentSelectedDate = todayStr;
+            document.getElementById('current-date-label').innerText = `${day}/${month}/${year}`;
+            calendarViewDate = new Date();
 
             initializeUserLocation(() => {
-                loadDateData();
+                loadAllHistoryForCache(user.uid, () => {
+                    loadDateData();
+                });
             });
             calculateStreak(user.uid);
             loadQadaCounts(user.uid);
@@ -447,8 +590,24 @@
             document.getElementById('app-screen').classList.add('hidden');
             document.getElementById('streak-counter').innerHTML = `<i class="fa-solid fa-fire"></i> 0 Day Streak`;
             qadaCounts = { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 };
+            allHistoryCache = {};
         }
     });
+
+    function loadAllHistoryForCache(uid, callback) {
+        db.collection('users').doc(uid).collection('history')
+            .limit(400)
+            .get()
+            .then(snapshot => {
+                allHistoryCache = {};
+                snapshot.forEach(doc => {
+                    allHistoryCache[doc.id] = doc.data();
+                });
+                if (callback) callback();
+            }).catch(() => {
+                if (callback) callback();
+            });
+    }
 
     function toggleAuthMode() {
         isSignUpMode = !isSignUpMode;
@@ -491,8 +650,7 @@
     function logout() { auth.signOut(); }
 
     function changeDate(days) {
-        const dateInput = document.getElementById('tracker-date');
-        const parts = dateInput.value.split('-');
+        const parts = currentSelectedDate.split('-');
         const d = new Date(parts[0], parts[1] - 1, parts[2]);
         d.setDate(d.getDate() + days);
 
@@ -501,9 +659,13 @@
         const day = String(d.getDate()).padStart(2, '0');
         const newDateStr = `${year}-${month}-${day}`;
 
-        if (dateInput.max && newDateStr > dateInput.max) return;
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        if (newDateStr > todayStr) return;
 
-        dateInput.value = newDateStr;
+        currentSelectedDate = newDateStr;
+        document.getElementById('current-date-label').innerText = `${day}/${month}/${year}`;
+        calendarViewDate = new Date(year, month - 1, day);
         loadDateData();
     }
 
@@ -561,7 +723,6 @@
             saveReflection();
         }
 
-        currentSelectedDate = document.getElementById('tracker-date').value;
         const thisToken = ++activeRequestToken;
 
         localDayData = {};
@@ -577,6 +738,7 @@
             if (thisToken !== activeRequestToken) return;
 
             localDayData = doc.exists ? doc.data() : {};
+            allHistoryCache[currentSelectedDate] = localDayData;
             renderFardhList();
             renderSunnahList();
             document.getElementById('reflection-text').value = localDayData.notes || '';
@@ -598,6 +760,7 @@
 
         const finalStatus = (current === newStatus) ? 'none' : newStatus;
         localDayData[prayerId] = finalStatus;
+        allHistoryCache[currentSelectedDate] = localDayData;
 
         renderFardhList();
         updateProgress();
@@ -611,6 +774,7 @@
             })
             .catch(err => {
                 localDayData[prayerId] = prevStatus;
+                allHistoryCache[currentSelectedDate] = localDayData;
                 renderFardhList();
                 updateProgress();
                 showToast("Couldn't save changes.");
@@ -624,6 +788,7 @@
 
         const prevVal = localDayData[sunnahId];
         localDayData[sunnahId] = !prevVal;
+        allHistoryCache[currentSelectedDate] = localDayData;
         renderSunnahList();
 
         db.collection('users').doc(user.uid).collection('history').doc(currentSelectedDate)
@@ -631,6 +796,7 @@
             .then(() => showToast("Saved!"))
             .catch(err => {
                 localDayData[sunnahId] = prevVal;
+                allHistoryCache[currentSelectedDate] = localDayData;
                 renderSunnahList();
                 showToast("Couldn't save changes.");
                 console.error("Sunnah save failed: ", err);
@@ -768,19 +934,13 @@
                         .then(() => {
                             showToast("Qada cleared!");
                             loadQadaCounts(user.uid);
-                        })
-                        .catch(err => {
-                            console.error(err);
-                            showToast("Could not update Qada count.");
+                            loadAllHistoryForCache(user.uid);
                         });
                 } else {
                     showToast("No active missed record found to clear.");
                 }
             })
-            .catch(err => {
-                console.error(err);
-                showToast("Could not update Qada count.");
-            });
+            .catch(() => showToast("Could not update Qada count."));
     }
 
     function updateProgress() {
