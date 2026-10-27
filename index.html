@@ -742,17 +742,25 @@
         const user = auth.currentUser;
         if (!user) return;
 
-        // Find the most recent history document where this prayer was marked as 'missed' and clear it
+        if (qadaCounts[prayerId] <= 0) {
+            showToast("No missed prayers to clear for " + prayerId);
+            return;
+        }
+
         db.collection('users').doc(user.uid).collection('history')
-            .orderBy(firebase.firestore.FieldPath.documentId(), 'desc')
             .get()
             .then(snapshot => {
                 let targetDocId = null;
-                snapshot.forEach(doc => {
-                    if (!targetDocId && doc.data()[prayerId] === 'missed') {
+                let docs = [];
+                snapshot.forEach(doc => docs.push({ id: doc.id, data: doc.data() }));
+                docs.sort((a, b) => b.id.localeCompare(a.id));
+
+                for (let doc of docs) {
+                    if (doc.data[prayerId] === 'missed') {
                         targetDocId = doc.id;
+                        break;
                     }
-                });
+                }
 
                 if (targetDocId) {
                     db.collection('users').doc(user.uid).collection('history').doc(targetDocId)
@@ -760,12 +768,19 @@
                         .then(() => {
                             showToast("Qada cleared!");
                             loadQadaCounts(user.uid);
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            showToast("Could not update Qada count.");
                         });
                 } else {
                     showToast("No active missed record found to clear.");
                 }
             })
-            .catch(() => showToast("Could not update Qada count."));
+            .catch(err => {
+                console.error(err);
+                showToast("Could not update Qada count.");
+            });
     }
 
     function updateProgress() {
@@ -805,7 +820,6 @@
 
     function calculateStreak(uid) {
         db.collection('users').doc(uid).collection('history')
-            .orderBy(firebase.firestore.FieldPath.documentId(), 'desc')
             .limit(400)
             .get()
             .then(snapshot => {
