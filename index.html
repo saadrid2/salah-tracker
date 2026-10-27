@@ -133,7 +133,7 @@
         .prayer-header { display: flex; align-items: center; gap: 12px; }
         .prayer-icon { font-size: 18px; width: 36px; height: 36px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.05); display: flex; align-items: center; justify-content: center; }
         .prayer-title { font-size: 15px; font-weight: 600; }
-        .prayer-time-sub { font-size: 11px; color: var(--accent-gold); margin-top: 1px; }
+        .prayer-time-sub { font-size: 11px; color: var(--accent-gold); margin-top: 1px; font-weight: 500; }
 
         .status-group { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255, 255, 255, 0.08); }
         .status-btn {
@@ -272,7 +272,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Enable offline persistence safely
     db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
     let isSignUpMode = false;
@@ -297,7 +296,17 @@
         { id: 'witr', name: 'Witr Prayer' }
     ];
 
-    // Flush pending notes if user closes or hides the tab
+    // Converts 24-hour time strings (e.g. "13:25") to 12-hour format (e.g. "1:25 PM")
+    function formatTo12Hour(time24) {
+        if (!time24 || !/^\d{2}:\d{2}/.test(time24)) return '';
+        const [hoursStr, minutesStr] = time24.split(':');
+        let hours = parseInt(hoursStr, 10);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // convert '0' to '12'
+        return `${hours}:${minutesStr} ${ampm}`;
+    }
+
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden' && noteSaveTimeout) {
             clearTimeout(noteSaveTimeout);
@@ -453,7 +462,6 @@
         currentSelectedDate = document.getElementById('tracker-date').value;
         const thisToken = ++activeRequestToken;
 
-        // Reset state immediately to prevent showing previous day's data on slow load
         localDayData = {};
         renderFardhList();
         renderSunnahList();
@@ -537,9 +545,11 @@
 
             let timeSubHtml = '';
             const rawTime = apiPrayerTimes[prayer.name];
-            if (rawTime && /^\d{2}:\d{2}/.test(rawTime)) {
-                const cleanTime = rawTime.slice(0, 5);
-                timeSubHtml = `<div class="prayer-time-sub">${cleanTime}</div>`;
+            if (rawTime) {
+                const formattedTime = formatTo12Hour(rawTime);
+                if (formattedTime) {
+                    timeSubHtml = `<div class="prayer-time-sub">${formattedTime}</div>`;
+                }
             }
 
             const card = document.createElement('div');
