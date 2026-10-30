@@ -136,14 +136,13 @@
             background-color: rgba(255,255,255,0.02); color: var(--text-main); border: 1px solid transparent; transition: all 0.2s;
         }
         .cal-day:hover { background-color: rgba(255,255,255,0.08); }
-        .cal-day.selected { border-color: var(--accent-green); background-color: rgba(16, 185, 129, 0.15); }
+        .cal-day.selected { border: 2px solid var(--text-main); }
         .cal-day.muted { color: var(--text-sub); opacity: 0.4; }
         .cal-day.future { opacity: 0.2; pointer-events: none; }
         
-        /* Status Indicator Dots inside Calendar Days */
-        .status-dot { width: 5px; height: 5px; border-radius: 50%; position: absolute; bottom: 4px; }
-        .status-dot.complete { background-color: var(--accent-green); box-shadow: 0 0 4px var(--accent-green); }
-        .status-dot.incomplete { background-color: var(--accent-red); box-shadow: 0 0 4px var(--accent-red); }
+        /* Full Circle Status Fills */
+        .cal-day.complete { background-color: rgba(16, 185, 129, 0.25); border-color: var(--accent-green); color: var(--accent-green); }
+        .cal-day.incomplete { background-color: rgba(239, 68, 68, 0.25); border-color: var(--accent-red); color: var(--accent-red); }
 
         .hijri-display { font-size: 11px; color: var(--accent-gold); text-align: center; margin-top: -10px; margin-bottom: 14px; font-weight: 500; }
         .location-display { font-size: 10px; color: var(--text-sub); text-align: center; margin-top: -10px; margin-bottom: 12px; }
@@ -256,7 +255,6 @@
             <button class="logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
         </div>
 
-        <!-- CUSTOM DATE BAR WITH DROPDOWN CALENDAR -->
         <div class="date-bar">
             <button class="date-btn" onclick="changeDate(-1)" aria-label="Previous Day"><i class="fa-solid fa-chevron-left"></i></button>
             <button type="button" class="date-display-btn" onclick="toggleCalendarDropdown()">
@@ -342,7 +340,7 @@
     db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
     let isSignUpMode = false;
-    let currentSelectedDate = ''; // Format YYYY-MM-DD
+    let currentSelectedDate = ''; 
     let localDayData = {};
     let activeRequestToken = 0;
     let noteSaveTimeout = null;
@@ -515,13 +513,11 @@
                     if (val === true || val === 'jamaah' || val === 'individual' || val === 'late') completedCount++;
                 });
 
-                const dot = document.createElement('div');
                 if (completedCount === 5) {
-                    dot.className = 'status-dot complete';
+                    div.classList.add('complete');
                 } else {
-                    dot.className = 'status-dot incomplete';
+                    div.classList.add('incomplete');
                 }
-                div.appendChild(dot);
             }
 
             div.onclick = () => {
